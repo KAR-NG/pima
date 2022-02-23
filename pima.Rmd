@@ -1,0 +1,217 @@
+---
+title: "pima"
+author: "Kar"
+date: "23/02/2022"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+always_allow_html: yes
+
+---
+
+## 1 Summary
+
+Hi Eetat
+
+## 2 R Packages
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(skimr)
+library(ROSE)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(rattle)
+
+```
+
+
+### 3 Introduction
+
+### 4 Data preparation
+
+The data used in this project is downloaded from kaggle website. 
+
+#### 4.1 Data import
+
+Following code upload the data.
+
+```{r}
+
+pima <- read.csv("diabetes.csv", na.strings = c("", NA))
+
+```
+
+Following show the first randomly selected 10 rows of observation. It will be serve as an initial observation of the dataset. 
+
+```{r}
+sample_n(pima, 10)
+
+```
+#### 4.2 Data exploration
+
+The dataset has 768 rows of observation, and 9 columns of variables (or known as "feature" or "predictor"). In the dataset, all of the 9 variables are numerical variables. 
+
+```{r}
+skim_without_charts(pima)
+
+```
+
+From this table, I see that the dataset is very complete, because all variables do not have missing value, all variables hav ethe *complete_rate* of 1. 
+
+Alternatively, I can check the NA by following code.
+
+```{r}
+colSums(is.na(pima))
+```
+
+From the above, I concluded that there is no missing data to manage.
+
+Following show the basic statisics of these variables. 
+
+```{r}
+summary(pima)
+```
+
+
+### 5 Data cleaning and transformation
+
+### 5.1 Transform outcome
+
+The outcome varialbe has to be in factor type instead of numeric. Therefore following code complete the conversion. 
+
+```{r}
+pima <- pima %>% 
+  mutate(Outcome = as.factor(Outcome))
+
+```
+
+Lets check. 
+
+```{r}
+summary(pima)
+```
+
+### Data balancing
+
+There is imbalance problem in this dataset. In responding variable, there is only 34.9% of observations belong to the group "1".
+
+```{r}
+268/768
+
+```
+Following code complete the balancing using BOTH sampling. 
+
+```{r}
+pima <- ovun.sample(Outcome ~., 
+                          data = pima, 
+                          method = "both")$data # total samples of train set
+
+```
+
+Let see the outcome. 
+
+```{r}
+table(pima$Outcome)
+
+```
+
+
+### 6 Data visualisation
+
+Following the variables to explore. 
+
+```{r}
+names(pima)
+```
+
+```{r, fig.height=12, fig.width=8}
+
+# pivoting
+
+pima2 <- pima %>% 
+  pivot_longer(c(1:8), 
+               values_to = "my_values",
+               names_to = "my_variables")
+
+# plot the graph
+
+ggplot(pima2, aes(x = Outcome, y = my_values, colour = Outcome)) +
+  geom_jitter(width = 0.2, alpha = 0.5, size = 1) +
+  geom_boxplot(size = 0.2, width = 0.2, 
+               colour = "black", 
+               alpha = 0.5, 
+               outlier.shape = NA) +
+  theme_bw() +
+  theme(legend.position = "NONE") +
+  facet_wrap(~my_variables, scales = "free")
+
+```
+
+### 7 Machine learning
+
+#### 7.1 Data partitioning
+
+```{r}
+
+# Making the index
+
+ind <- pima$Outcome %>% createDataPartition(p = 0.8, list = F)
+
+# Create train and test sets
+
+train.set <- pima[ind, ]
+test.set <- pima[-ind, ]
+
+
+```
+
+
+
+#### 7.2 Model building
+
+```{r}
+
+# Model building
+
+model_dt <- train(Outcome ~., 
+                  data = pima,
+                  method = "rpart",
+                  trControl = trainControl(method = "repeatedcv",
+                                           number = 10,
+                                           repeats = 3))
+  
+```
+
+```{r}
+plot(model_dt)
+
+
+```
+```{r}
+fancyRpartPlot(model_dt$finalModel)
+```
+
+```{r}
+# prediction
+
+pred <- model_dt %>% predict(test.set)
+
+# accuracy 
+
+mean(pred == test.set$Outcome)
+
+```
+
+
+
+
+## 8 Conclusion
+
+## 9 Reference
+
+UCI Machine learning 2017, *Pima Indians Diabetes Database*, viewed 23 February 2022, https://www.kaggle.com/uciml/pima-indians-diabetes-database?select=diabetes.csv 
+
