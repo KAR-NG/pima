@@ -1,2 +1,2 @@
-# pima
+# Machine Learning for Diabetes
 pima
